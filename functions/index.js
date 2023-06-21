@@ -28,6 +28,7 @@ const {
   encryptPin,
   createTrip,
   getTrips,
+  formatTransactionString
 } = require("./utils.js");
 
 //web app's Firebase configuration
@@ -201,79 +202,77 @@ app.post("/ussd/v2/rider", async (req, res) => {
           response = "END You have no trips yet.";
         }
       } else if (text == "7*1") {
-        // Prompt user to enter MoMo PIN to verify themselves if a driver, else show mate transactions and merchant initiation menus
+        // Check user role using the isMerchant function
         const result = await isMerchant(phone_number);
-        console.log("Is this a merchant? :", result);
-        if (result.role == "driver") {
-          response = `CON Enter your MTN Transport PIN to verify yourself:`;
-        } else if (result.role == "mate") {
-          response = `CON 
+        console.log(`Checked if ${phone_number} is a merchant and got result: ${result}`);
+        // Use a switch statement to handle different user roles
+        switch (result.role) {
+          case "driver":
+            response = `CON Enter your MTN Transport PIN to verify yourself:`;
+            break;
+          case "mate":
+            response = `CON 
           1. View transactions
           2. Initiate a rider payment`;
-        } else {
-          response =
-            "CON Welcome to MTN Transport. To start onboarding, enter your Driver License Number";
+            break;
+          // If the user is neither a driver nor a mate, welcome them to MTN Transport and prompt them to enter their Driver License Number to start onboarding
+          default:
+            response = "CON Welcome to MTN Transport. To start onboarding, enter your Driver License Number";
         }
+
       } else if (text.startsWith("7*1") && text.length > 3) {
         // Do something with inputs [2] which is the MoMo PIN to manage authentication
         // Split the input into an array of strings
         inputs = text.split("*");
-        console.log(inputs);
+        console.log(`User inputs in this session: ${inputs}`);
         if (inputs.length == 3) {
-          // Present options to manage account
-          if (inputs[2].length > 4) {
-            // Driver onboarding
-            response = "CON Enter your Vehicle Plate Number:";
-          } else if (inputs[2].length == 4) {
-            const { merchant: merchantObject, merchantRoute: route } =
-              await getMerchant(phone_number);
+          switch (true) {
+            case (inputs[2].length == 4):
+              const { merchant: merchantObject, merchantRoute: route } =
+                await getMerchant(phone_number);
 
-            const merchantPIN = merchantObject.pin;
-            // check if input is pin
-            const isPIN = await bcrypt.compare(inputs[2], merchantPIN);
-            if (isPIN) {
-              if (route.start_location == "new user") {
-                response = `CON To use MTN Transport as a merchant, you should first create a route
+              const merchantPIN = merchantObject.pin;
+              // check if input is pin
+              const isPIN = await bcrypt.compare(inputs[2], merchantPIN);
+              if (isPIN) {
+                if (route.start_location == "new user") {
+                  response = `CON To use MTN Transport as a merchant, you should first create a route
                  1. New route`;
-              } else {
-                response = `CON Merchant Account
+                } else {
+                  response = `CON Merchant Account
                 1. New route
                 2. View route
                 3. View transactions
                 4. Manage account
                 5. Initiate Payment`;
+                }
+              } else {
+                response = `END You entered the wrong pin, please restart and try again.`;
               }
-            } else {
-              response = `END You entered the wrong pin, please restart and try again.`;
-            }
-          } else {
-            if (inputs[2] == "1") {
-              // Mate view of Merchant Transactions
-              const transactions = await getTransactionsForMerchant(merchant);
+              break;
+            case (inputs[2].length > 4):
+              // Driver onboarding
+              response = "CON Enter your Vehicle Plate Number:";
+              break;
+            default:
+              switch (inputs[2]) {
+                case "1":
+                  // Mate view of Merchant Transactions
+                  const transactions = await getTransactionsForMerchant(merchant);
+                  const recentTransactions = transactions.reverse().slice(0, 10);
+                  const transactionString = formatTransactionString(recentTransactions);
 
-              const recentTransactions = transactions.reverse().slice(0, 10); // reverse the order of the transactions and get the last 10
-
-              let transactionString =
-                "CON Here are your recent transactions:\n";
-
-              recentTransactions.forEach((transaction) => {
-                const amount = transaction.amount;
-                const sender = transaction.sender_account;
-                const timestamp = new Date(transaction.timestamp_created);
-
-                transactionString += `${amount} GHS from ${sender} on ${timestamp.toLocaleString()}\n`;
-              });
-
-              if (recentTransactions.length === 0) {
-                transactionString = "END There are no recent transactions.";
+                  response = transactionString || "END There are no recent transactions.";
+                  break;
+                case "2":
+                  // Mate view of Merchant Initiated payment
+                  response = "CON Please enter the number of the rider you want to charge:";
+                  break;
+                default:
+                  // Handle other input cases here
+                  break;
               }
-
-              response = transactionString;
-            } else if (inputs[2] == "2") {
-              // Mate view of Merchant Initiated payment
-              response =
-                "CON Please enter the number of the rider you want to charge:";
-            }
+              break;
           }
         } else if (inputs.length == 4) {
           if (inputs[2].length > 4) {

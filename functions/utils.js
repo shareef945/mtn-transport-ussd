@@ -1,5 +1,6 @@
 const token = require("./generateToken.js");
 const axios = require("axios");
+const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
 const api_root =
   "https://us-central1-sem-transport-api-65ebf.cloudfunctions.net/api";
@@ -113,6 +114,20 @@ function convertToMsisdn(number) {
   } else {
     return number;
   }
+}
+
+function formatTransactionString(transactions) {
+  let transactionString = "END Here are your recent transactions:\n";
+
+  transactions.forEach((transaction) => {
+    const amount = transaction.amount;
+    const sender = transaction.sender_account;
+    const timestamp = new Date(transaction.timestamp_created);
+
+    transactionString += `${amount} GHS from ${sender} on ${timestamp.toLocaleString()}\n`;
+  });
+
+  return transactionString;
 }
 
 async function getTransactionsForMerchant(merchantId) {
@@ -586,5 +601,6 @@ module.exports = {
   getMerchant,
   encryptPin,
   createTrip,
-  getTrips
+  getTrips,
+  formatTransactionString
 };
