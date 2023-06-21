@@ -320,6 +320,7 @@ app.post("/ussd/v2/rider", async (req, res) => {
           } else if (inputs[3] == "4") {
             const { merchant: merchantObject, merchantRoute: route } =
               await getMerchant(phone_number);
+              console.log(merchant);
             // Present the user with their merchant information and an option to change their vehicle info
             // TODO: swap name
             response = `CON Hello ${merchant.driver_name}
