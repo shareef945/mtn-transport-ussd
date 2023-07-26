@@ -81,11 +81,11 @@ app.get("/", (req, res) => {
 });
 
 //rider
+//7+1+1+1
 
 app.post("/ussd/v2/rider", async (req, res) => {
   const {
     Type,
-    sequence,
     Mobile,
     SessionId,
     ServiceCode,
@@ -96,34 +96,6 @@ app.post("/ussd/v2/rider", async (req, res) => {
     Platform,
   } = req.body;
   let response;
-  // let merchantId = "";
-
-  // let merchant = {
-  //   name: "Shareef Ali",
-  //   phone_number: "233242945815",
-  //   merchant_id: "233242945815",
-  //   email: "",
-  //   dob: "1991-06-23", // need to write a function to sanitise dob in case
-  //   city: "Accra",
-  //   driver_name: "Shareef Ali",
-  //   driver_phone_number: "233242945815",
-  //   merchant_type: "driver",
-  // };
-
-  // let phone_number;
-  // if (phoneNumber.startsWith("+")) {
-  //   phone_number = phoneNumber.slice(1);
-  // } else {
-  //   phone_number = phoneNumber;
-  // }
-
-  // const rider = {
-  //   name: "Shareef Ali",
-  //   phone_number: phone_number,
-  //   id: phone_number,
-  //   dob: "1995-01-01",
-  //   email: "shareef945@gmail.com",
-  // };
 
   const phoneRegex = /^0[2357][0-9]{8}$/;
 
@@ -146,8 +118,8 @@ app.post("/ussd/v2/rider", async (req, res) => {
       };
       break;
     case "response":
-      switch (String(Message)) {
-        case "7":
+      switch (Sequence) {
+        case 1:
           response = {
             SessionId: SessionId,
             Type: "response",
@@ -162,67 +134,155 @@ app.post("/ussd/v2/rider", async (req, res) => {
             Data: null,
             sequence: Sequence + 1,
           };
-          switch (sequence) {
-            case 2:
-              switch (String(Message)) {
-                case "1":
-                  response = {
-                    SessionId: SessionId,
-                    Type: "response",
-                    Message: "Enter Merchant Phone Number:",
-                    Mask: null,
-                    MaskNextRoute: null,
-                    Item: null,
-                    ServiceCode: null,
-                    Label: "Transport",
-                    DataType: "input",
-                    FieldType: "text",
-                    Data: null,
-                    sequence: Sequence + 1,
-                  };
-                  break;
-                case "2":
-                  response = {
-                    SessionId: SessionId,
-                    Type: "response",
-                    Message: "1. Pay \n2. View Trips",
-                    Mask: null,
-                    MaskNextRoute: null,
-                    Item: null,
-                    ServiceCode: null,
-                    Label: "Transport",
-                    DataType: "input",
-                    FieldType: "text",
-                    Data: null,
-                    sequence: Sequence + 1,
-                  };
-                  break;
-              }
-              break;
-            case 3:
+          break;
+        case 2:
+          switch (String(Message)) {
+            case "1":
               response = {
                 SessionId: SessionId,
-                Type: "release",
-                Message: "Thank you for using SAI Transport",
+                Type: "response",
+                Message: "1. New route \n2.View Route \n3.View transactions",
                 Mask: null,
                 MaskNextRoute: null,
                 Item: null,
                 ServiceCode: null,
                 Label: "Transport",
                 DataType: "input",
-                FieldType: "display",
+                FieldType: "text",
+                ClientState: "merchant",
                 Data: null,
                 sequence: Sequence + 1,
               };
+              break;
+            case "2":
+              response = {
+                SessionId: SessionId,
+                Type: "response",
+                Message: "1. Pay \n2. View Trips",
+                Mask: null,
+                MaskNextRoute: null,
+                Item: null,
+                ServiceCode: null,
+                Label: "Transport",
+                DataType: "input",
+                FieldType: "text",
+                ClientState: "rider",
+                Data: null,
+                sequence: Sequence + 1,
+              };
+              break;
           }
+          break;
+        case 3:
+          console.log("Client State: ", ClientState);
+          switch (ClientState) {
+            case "merchant":
+              // MERCHANT
+              switch (String(Message)) {
+                case "1":
+                  response = {
+                    SessionId: SessionId,
+                    Type: "response",
+                    Message: "Here is a new route",
+                    Mask: null,
+                    MaskNextRoute: null,
+                    Item: null,
+                    ServiceCode: null,
+                    Label: "Transport",
+                    DataType: "input",
+                    FieldType: "number",
+                    Data: null,
+                    sequence: Sequence + 1,
+                  };
+                  break;
+              }
+              break;
+            case "rider":
+              // RIDER
+              switch (String(Message)) {
+                case "1":
+                  response = {
+                    SessionId: SessionId,
+                    Type: "response",
+                    Message: "Pay for a trip",
+                    Mask: null,
+                    MaskNextRoute: null,
+                    Item: null,
+                    ServiceCode: null,
+                    Label: "Transport",
+                    DataType: "input",
+                    FieldType: "number",
+                    Data: null,
+                    sequence: Sequence + 1,
+                  };
+                  break;
+                case "2":
+                  const tripList = await getTrips(convertToMsisdn(Mobile));
+                  let recentTrips;
+                  let tripRes = "Here are your recent trips: ";
+                  if (tripList) {
+                    recentTrips = tripsList.join("\n\n");
+                    tripRes = tripRes + recentTrips;
+                    response = {
+                      SessionId: SessionId,
+                      Type: "response",
+                      Message: tripRes,
+                      Mask: null,
+                      MaskNextRoute: null,
+                      Item: null,
+                      ServiceCode: null,
+                      Label: "Transport",
+                      DataType: "input",
+                      FieldType: "number",
+                      Data: null,
+                      sequence: Sequence + 1,
+                    };
+                  } else {
+                    tripRes = "You have no trips yet";
+                    response = {
+                      SessionId: SessionId,
+                      Type: "release",
+                      Message: tripRes,
+                      Mask: null,
+                      MaskNextRoute: null,
+                      Item: null,
+                      ServiceCode: null,
+                      Label: "Transport",
+                      DataType: "input",
+                      FieldType: "display",
+                      Data: null,
+                      sequence: Sequence + 1,
+                    };
+                  }
+                  break;
+              }
+              break;
+          }
+          break;
+
+        default:
+          response = {
+            SessionId: SessionId,
+            Type: "release",
+            Message: "Invalid input",
+            Mask: null,
+            MaskNextRoute: null,
+            Item: null,
+            ServiceCode: null,
+            Label: "Transport",
+            DataType: "input",
+            FieldType: "text",
+            Data: null,
+            sequence: Sequence + 1,
+          };
           break;
       }
       break;
   }
-
   res.set("Content-Type", "application/json");
   res.send(response);
 });
+
 exports.mtn_transport = functions.https.onRequest(app);
 
 // TODO , figure out how to move this to services.js again
