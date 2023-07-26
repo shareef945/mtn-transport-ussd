@@ -100,7 +100,7 @@ app.post("/ussd/v2/rider", async (req, res) => {
   const phoneRegex = /^0[2357][0-9]{8}$/;
 
   switch (Type) {
-    case "initiation":
+    case "Initiation":
       response = {
         SessionId: SessionId,
         Type: "response",
