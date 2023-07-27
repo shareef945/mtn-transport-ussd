@@ -183,7 +183,7 @@ async function isMerchant(phone) {
     }
   } catch (error) {
     console.log("Merchant does not exist");
-    // console.error(error.message);
+    console.error(error.message);
     return false;
   }
 }
@@ -586,5 +586,5 @@ module.exports = {
   getMerchant,
   encryptPin,
   createTrip,
-  getTrips
+  getTrips,
 };

@@ -857,7 +857,7 @@ async function disbursement(merchantPhoneNumber, amount) {
 
 async function generateMtnToken() {
   console.log("Generating MTN token");
-  console.log("Token to folow")
+  console.log("Token to folow");
   console.log("token", mtnCollectionToken);
   try {
     const response = await axios.post(mtnCollectionTokenUrl, null, {
